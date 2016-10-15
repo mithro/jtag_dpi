@@ -324,7 +324,7 @@ static void create_listening_socket ( void )
       {
         const std::string addr_str = ip_address_to_text( &addr.sin_addr );
 
-        printf( "%sListening on IP address %s (%s), TCP port %d.\n",
+        printf( "%sListening on IP address %s (%s), TCP port %d.\r\n",
                 INFO_MSG_PREFIX,
                 addr_str.c_str(),
                 s_listen_on_local_addr_only ? "local only" : "all",
@@ -380,7 +380,7 @@ static void accept_connection ( void )
 
   if ( s_print_informational_messages )
   {
-    // printf( "%sPoll result flags: 0x%02X\n", polledFd.revents, INFO_MSG_PREFIX );
+    // printf( "%sPoll result flags: 0x%02X\r\n", polledFd.revents, INFO_MSG_PREFIX );
     // fflush( stdout );
   }
 
@@ -410,7 +410,7 @@ static void accept_connection ( void )
     {
       const std::string addr_str = ip_address_to_text( &remoteAddr.sin_addr );
 
-      printf( "%sAccepted an incoming connection from IP address %s, TCP port %d.\n",
+      printf( "%sAccepted an incoming connection from IP address %s, TCP port %d.\r\n",
               INFO_MSG_PREFIX,
               addr_str.c_str(),
               ntohs( remoteAddr.sin_port ) );
@@ -420,7 +420,7 @@ static void accept_connection ( void )
   catch ( const std::exception & e )
   {
     fprintf( stderr,
-             "%sError accepting a connection on the listening socket: %s\n",
+             "%sError accepting a connection on the listening socket: %s\r\n",
              ERROR_MSG_PREFIX_TICK,
              e.what() );
     fflush( stderr );
@@ -463,7 +463,7 @@ static void receive_commands ( unsigned char * const jtag_tms,
     {
       if ( s_print_informational_messages )
       {
-        printf( "%sConnection closed at the other end.\n", INFO_MSG_PREFIX );
+        printf( "%sConnection closed at the other end.\r\n", INFO_MSG_PREFIX );
         fflush( stdout );
       }
       close_current_connection();
@@ -484,12 +484,28 @@ static void receive_commands ( unsigned char * const jtag_tms,
 
     assert( received_byte_count == 1 );
 
+    if ( received_data == 'R') {
+        send_byte( jtag_tdo ? 1 : 0 );
+    } else if ( received_data == 'B' ) {
+        printf("BLINK ON!\r\n");
+    } else if ( received_data == 'b' ) {
+        printf("BLINK OFF!\r\n");
+    } else {
+        switch( received_data & 0xf0 ) {
+        case ('0' & 0xf0):
+            break;
+        case ('r' & 0xf0):
+            break;
+        default:
+            break;
+    }
+
     if ( received_data & 0x80 )
     {
       if ( s_print_informational_messages )
       {
-        // printf( "%sReceived JTAG command: 0x%02X\n", INFO_MSG_PREFIX, received_data );
-        // fflush( stdout );
+        printf( "%sReceived JTAG command: 0x%02X\r\n", INFO_MSG_PREFIX, received_data );
+        fflush( stdout );
       }
 
       switch ( received_data )
@@ -539,17 +555,16 @@ static void receive_commands ( unsigned char * const jtag_tms,
         throw std::runtime_error( buffer );
       }
 
-      *jtag_tck  = ( received_data & 0x01 ) ? 1 : 0;
-      *jtag_trst = ( received_data & 0x02 ) ? 1 : 0;
-      *jtag_tdi  = ( received_data & 0x04 ) ? 1 : 0;
-      *jtag_tms  = ( received_data & 0x08 ) ? 1 : 0;
+      *jtag_tck  = ( received_data & 0x04 ) ? 1 : 0;
+      //*jtag_trst = ( received_data & 0x02 ) ? 1 : 0;
+      *jtag_tdi  = ( received_data & 0x01 ) ? 1 : 0;
+      *jtag_tms  = ( received_data & 0x02 ) ? 1 : 0;
 
       *jtag_new_data_available = 1;
 
       if ( s_print_informational_messages )
       {
-        /*
-        printf( "%sReceived JTAG data 0x%02X, TCK: %d, TMS: %d, TDI: %d, TRST: %d.\n",
+        printf( "%sReceived JTAG data 0x%02X, TCK: %d, TMS: %d, TDI: %d, TRST: %d.\r\n",
                 INFO_MSG_PREFIX,
                 received_data,
                 *jtag_tck,
@@ -557,7 +572,6 @@ static void receive_commands ( unsigned char * const jtag_tms,
                 *jtag_tdi,
                 *jtag_trst );
         fflush( stdout );
-        */
       }
 
       // Acknowledge the received data.
@@ -618,7 +632,7 @@ static void serve_connection ( unsigned char * const jtag_tms,
   catch ( const std::exception & e )
   {
     fprintf( stderr,
-             "%sConnection closed after error: %s\n",
+             "%sConnection closed after error: %s\r\n",
              ERROR_MSG_PREFIX_TICK,
              e.what() );
     fflush( stderr );
@@ -700,13 +714,13 @@ int jtag_dpi_init ( const int tcp_port,
   {
     // We should return this error string to the caller,
     // but Verilog does not have good support for variable-length strings.
-    fprintf( stderr, "%s%s\n", ERROR_MSG_PREFIX_INIT, e.what() );
+    fprintf( stderr, "%s%s\r\n", ERROR_MSG_PREFIX_INIT, e.what() );
     fflush( stderr );
     return RET_FAILURE;
   }
   catch ( ... )
   {
-    fprintf( stderr, "%sUnexpected C++ exception.\n", ERROR_MSG_PREFIX_INIT );
+    fprintf( stderr, "%sUnexpected C++ exception.\r\n", ERROR_MSG_PREFIX_INIT );
     fflush( stderr );
     return RET_FAILURE;
   }
@@ -755,13 +769,13 @@ int jtag_dpi_tick ( unsigned char * const jtag_tms,
   }
   catch ( const std::exception & e )
   {
-    fprintf( stderr, "%s%s\n", ERROR_MSG_PREFIX_TICK, e.what() );
+    fprintf( stderr, "%s%s\r\n", ERROR_MSG_PREFIX_TICK, e.what() );
     fflush( stderr );
     return RET_FAILURE;
   }
   catch ( ... )
   {
-    fprintf( stderr, "%sUnexpected C++ exception.\n", ERROR_MSG_PREFIX_TICK );
+    fprintf( stderr, "%sUnexpected C++ exception.\r\n", ERROR_MSG_PREFIX_TICK );
     fflush( stderr );
     return RET_FAILURE;
   }
